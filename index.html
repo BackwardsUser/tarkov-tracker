@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarkov Quest Tracker</title>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --bg2: #151515;
+      --bg3: #1c1c1c;
+      --border: #2a2a2a;
+      --accent: #c8aa6e;
+      --accent2: #9a7c4a;
+      --text: #d4c9b0;
+      --text-dim: #7a7060;
+      --complete: #3a5a3a;
+      --complete-text: #6abf6a;
+      --trader-colors: #c8aa6e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .search-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      width: 220px;
+      outline: none;
+    }
+    .search-box:focus { border-color: var(--accent2); }
+    .search-box::placeholder { color: var(--text-dim); }
+
+    .filter-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .stats {
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+    .stats span { color: var(--accent); font-weight: 600; }
+
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--text-dim);
+      font-size: 16px;
+    }
+
+    .trader-section { margin-bottom: 32px; }
+
+    .trader-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .trader-header:hover .trader-name { color: var(--accent); }
+
+    .trader-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: color 0.15s;
+    }
+
+    .trader-count {
+      font-size: 12px;
+      color: var(--text-dim);
+      background: var(--bg3);
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .trader-progress {
+      font-size: 11px;
+      color: var(--complete-text);
+      margin-left: auto;
+    }
+
+    .collapse-icon {
+      color: var(--text-dim);
+      font-size: 10px;
+      margin-left: 4px;
+    }
+
+    .quest-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .quest-table thead {
+      background: var(--bg3);
+    }
+    .quest-table th {
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .quest-table th:first-child { width: 36px; }
+
+    .quest-row {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .quest-row:last-child { border-bottom: none; }
+    .quest-row:hover { background: rgba(200, 170, 110, 0.04); }
+
+    .quest-row.completed {
+      background: rgba(58, 90, 58, 0.15);
+    }
+    .quest-row.completed .quest-name span {
+      color: var(--complete-text);
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+    .quest-row.completed td:not(:first-child):not(:nth-child(2)) {
+      opacity: 0.4;
+    }
+
+    .quest-row td {
+      padding: 8px 12px;
+      vertical-align: middle;
+    }
+
+    .check-cell { text-align: center; }
+
+    .quest-check {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    .quest-name {
+      font-weight: 500;
+      color: var(--text);
+      transition: color 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quest-icon {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      flex-shrink: 0;
+      border-radius: 2px;
+      background: var(--bg3);
+    }
+
+    .kappa-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(200, 170, 110, 0.15);
+      border: 1px solid var(--accent2);
+      color: var(--accent);
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .map-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+
+    .level-badge {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .prereq-list {
+      font-size: 11px;
+      color: var(--text-dim);
+      max-width: 280px;
+    }
+    .prereq-item {
+      display: inline-block;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 6px;
+      margin: 1px;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .prereq-item:hover { border-color: var(--accent2); color: var(--accent); }
+    .prereq-item.completed-prereq {
+      background: rgba(58, 90, 58, 0.3);
+      border-color: rgba(106, 191, 106, 0.3);
+      color: var(--complete-text);
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .all-before-btn {
+      font-size: 10px;
+      color: #7a9abf;
+      background: rgba(70, 110, 160, 0.1);
+      border: 1px solid #2a4a6a;
+      padding: 2px 6px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.1s;
+      white-space: nowrap;
+      font-style: italic;
+    }
+    .all-before-btn:hover { background: rgba(70, 110, 160, 0.25); border-color: #4a7aaa; color: #a0c0e0; }
+    .quest-row.completed .all-before-btn { display: none; }
+
+    .quest-row:nth-child(even) { background: rgba(255,255,255,0.02); }
+    .quest-row.completed:nth-child(even) { background: rgba(58, 90, 58, 0.2); }
+
+    .objectives-toggle {
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      transition: all 0.1s;
+    }
+    .objectives-toggle:hover { border-color: var(--accent2); color: var(--accent); }
+
+    .objectives-row { display: none; }
+    .objectives-row.open { display: table-row; }
+    .objectives-row td {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px 8px 48px;
+    }
+    .objective-item {
+      font-size: 12px;
+      color: var(--text-dim);
+      padding: 2px 0;
+    }
+    .objective-item::before { content: '▸ '; color: var(--accent2); }
+
+    .reset-btn {
+      background: transparent;
+      border: 1px solid #5a3030;
+      color: #a05050;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .reset-btn:hover { background: #5a3030; color: #d08080; }
+
+    .progress-bar-wrap {
+      height: 3px;
+      background: var(--border);
+      margin-bottom: 16px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s ease;
+      border-radius: 2px;
+    }
+
+    .error-msg {
+      color: #d08080;
+      background: rgba(90, 30, 30, 0.3);
+      border: 1px solid #5a3030;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+
+    .collapsed-body { display: none; }
+
+    .view-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .view-btn:hover, .view-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Flowchart view */
+    .flowchart-fullscreen {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      background: var(--bg);
+    }
+
+    .cy-container {
+      position: absolute;
+      inset: 0;
+      background: var(--bg2);
+      overflow: hidden;
+    }
+
+    .flowchart-legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 60;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(21, 21, 21, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      max-width: 320px;
+      backdrop-filter: blur(4px);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid;
+      overflow: hidden;
+      background: var(--bg3);
+      flex-shrink: 0;
+    }
+
+    .legend-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .legend-name {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    @media (max-width: 900px) {
+      .col-prereqs, .col-objectives { display: none; }
+      main { padding: 12px; }
+      header { flex-wrap: wrap; gap: 8px; }
+      .search-box { width: 160px; }
+    }
+  </style>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>Tarkov Quest Tracker</h1>
+  <div class="header-controls">
+    <input type="text" class="search-box" id="search" placeholder="Search quests...">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="incomplete">Incomplete</button>
+    <button class="filter-btn" data-filter="complete">Complete</button>
+    <button class="filter-btn" data-filter="kappa">Kappa</button>
+    <span class="stats" id="stats">Loading...</span>
+    <button class="view-btn active" id="viewTable">Table</button>
+    <button class="view-btn" id="viewFlowchart">Flowchart</button>
+    <button class="reset-btn" id="resetBtn">Reset All</button>
+  </div>
+</header>
+
+<main id="main">
+  <div class="loading" id="loading">Loading quests from tarkov.dev...</div>
+</main>
+
+<script>
+const GQL_URL = 'https://api.tarkov.dev/graphql';
+const QUERY = `{
+  tasks {
+    id
+    name
+    minPlayerLevel
+    kappaRequired
+    taskImageLink
+    trader { name imageLink }
+    map { name }
+    taskRequirements { task { id name } }
+    objectives { id description type }
+  }
+}`;
+
+const STORAGE_KEY = 'tarkov_completed_quests';
+
+const TRADER_COLORS = {
+  'Prapor':      '#e05555',
+  'Therapist':   '#55cc88',
+  'Skier':       '#5599ee',
+  'Peacekeeper': '#55bbcc',
+  'Mechanic':    '#ee9944',
+  'Ragman':      '#aa66dd',
+  'Jaeger':      '#88bb44',
+  'Lightkeeper': '#44cccc',
+  'Ref':         '#ddcc44',
+  'Fence':       '#999999',
+  'Unknown':     '#666666',
+};
+
+let allTasks = [];
+let completedSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+let currentFilter = 'all';
+let searchQuery = '';
+let currentView = 'table';
+let taskMap = {};
+let traderInfo = {};
+
+async function fetchTasks() {
+  const res = await fetch(GQL_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: QUERY })
+  });
+  const json = await res.json();
+  return json.data.tasks;
+}
+
+function saveCompleted() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...completedSet]));
+}
+
+function getAllPrereqs(taskId, visited = new Set()) {
+  if (visited.has(taskId)) return visited;
+  visited.add(taskId);
+  const task = taskMap[taskId];
+  if (!task) return visited;
+  for (const req of task.taskRequirements) {
+    getAllPrereqs(req.task.id, visited);
+  }
+  return visited;
+}
+
+function markComplete(taskId) {
+  const prereqs = getAllPrereqs(taskId);
+  prereqs.forEach(id => completedSet.add(id));
+  saveCompleted();
+  render();
+}
+
+function markAllBefore(taskId) {
+  const prereqs = getAllPrereqs(taskId);
+  prereqs.delete(taskId);
+  prereqs.forEach(id => completedSet.add(id));
+  saveCompleted();
+  render();
+}
+
+function markIncomplete(taskId) {
+  // Remove task and all its prereqs (mirror of markComplete's cascade)
+  const toRemove = getAllPrereqs(taskId);
+
+  // Also cascade forward: remove any completed task that required something we're removing
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const task of allTasks) {
+      if (completedSet.has(task.id) && !toRemove.has(task.id)) {
+        const taskPrereqs = getAllPrereqs(task.id);
+        for (const id of toRemove) {
+          if (taskPrereqs.has(id)) {
+            toRemove.add(task.id);
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  toRemove.forEach(id => completedSet.delete(id));
+  saveCompleted();
+  render();
+}
+
+function groupByTrader(tasks) {
+  const groups = {};
+  for (const t of tasks) {
+    const name = t.trader?.name || 'Unknown';
+    if (!groups[name]) groups[name] = [];
+    groups[name].push(t);
+  }
+  return groups;
+}
+
+const TRADER_ORDER = ['Prapor','Therapist','Skier','Peacekeeper','Mechanic','Ragman','Jaeger','Lightkeeper','Ref','Fence','Unknown'];
+
+function getFilteredTasks() {
+  return allTasks.filter(t => {
+    if (currentFilter === 'complete' && !completedSet.has(t.id)) return false;
+    if (currentFilter === 'incomplete' && completedSet.has(t.id)) return false;
+    if (currentFilter === 'kappa' && !t.kappaRequired) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!t.name.toLowerCase().includes(q) &&
+          !(t.trader?.name || '').toLowerCase().includes(q) &&
+          !(t.map?.name || '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+const cyInstances = {};
+
+function destroyFlowcharts() {
+  for (const key of Object.keys(cyInstances)) {
+    try { cyInstances[key].destroy(); } catch(e) {}
+    delete cyInstances[key];
+  }
+}
+
+function renderFlowchartView(filtered) {
+  const presentTraders = TRADER_ORDER.filter(name =>
+    filtered.some(t => (t.trader?.name || 'Unknown') === name)
+  );
+  const restTraders = [...new Set(filtered.map(t => t.trader?.name || 'Unknown'))]
+    .filter(n => !TRADER_ORDER.includes(n));
+
+  let legendHtml = '<div class="flowchart-legend">';
+  for (const name of [...presentTraders, ...restTraders]) {
+    const color = TRADER_COLORS[name] || '#666';
+    const info = traderInfo[name];
+    legendHtml += `<div class="legend-item">
+      <div class="legend-icon" style="border-color:${color}">
+        ${info?.imageLink ? `<img src="${escHtml(info.imageLink)}" alt="${escHtml(name)}">` : ''}
+      </div>
+      <span class="legend-name" style="color:${color}">${escHtml(name)}</span>
+    </div>`;
+  }
+  legendHtml += '</div>';
+
+  return `<div id="flowchart-wrap" class="flowchart-fullscreen">
+    <div id="cy-main" class="cy-container"></div>
+    ${legendHtml}
+  </div>`;
+}
+
+function initFlowcharts(filtered) {
+  if (typeof cytoscape === 'undefined') return;
+  const container = document.getElementById('cy-main');
+  if (!container) return;
+
+  // Pin fullscreen wrapper below the sticky header
+  const wrap = document.getElementById('flowchart-wrap');
+  if (wrap) wrap.style.top = document.querySelector('header').offsetHeight + 'px';
+
+  // Clear any placeholder content so it doesn't show through the canvas
+  container.innerHTML = '';
+
+  const ids = new Set(filtered.map(t => t.id));
+  const elements = [];
+
+  for (const task of filtered) {
+    const done = completedSet.has(task.id);
+    const traderName = task.trader?.name || 'Unknown';
+    const color = TRADER_COLORS[traderName] || '#666';
+    elements.push({
+      group: 'nodes',
+      data: {
+        id: task.id,
+        label: task.name,
+        traderColor: color,
+        done,
+        kappa: !!task.kappaRequired,
+      },
+      classes: (done ? 'done' : 'todo') + (task.kappaRequired ? ' kappa' : ''),
+    });
+  }
+
+  for (const task of filtered) {
+    for (const req of (task.taskRequirements || [])) {
+      if (ids.has(req.task.id)) {
+        elements.push({
+          group: 'edges',
+          data: { id: `e-${req.task.id}-${task.id}`, source: req.task.id, target: task.id }
+        });
+      }
+    }
+  }
+
+  const cy = cytoscape({
+    container,
+    elements,
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'background-color': '#161616',
+          'border-color': 'data(traderColor)',
+          'border-width': 2,
+          'color': '#d4c9b0',
+          'label': 'data(label)',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'font-size': '10px',
+          'font-family': 'Segoe UI, system-ui, sans-serif',
+          'width': 'label',
+          'height': 'label',
+          'padding': '9px',
+          'text-wrap': 'wrap',
+          'text-max-width': '120px',
+          'shape': 'round-rectangle',
+        }
+      },
+      {
+        selector: 'node.done',
+        style: {
+          'background-color': 'rgba(30, 55, 30, 0.9)',
+          'color': '#5aaf5a',
+          'border-opacity': 0.45,
+        }
+      },
+      {
+        selector: 'node.kappa',
+        style: { 'border-width': 3 }
+      },
+      {
+        selector: 'node:selected',
+        style: {
+          'overlay-color': '#c8aa6e',
+          'overlay-opacity': 0.15,
+        }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'width': 1,
+          'line-color': '#2e2e2e',
+          'target-arrow-color': '#4a4a4a',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'arrow-scale': 0.7,
+        }
+      },
+      {
+        selector: 'edge.highlighted',
+        style: {
+          'line-color': '#c8aa6e',
+          'target-arrow-color': '#c8aa6e',
+          'width': 2,
+          'z-index': 10,
+        }
+      }
+    ],
+    layout: {
+      name: 'dagre',
+      rankDir: 'LR',
+      nodeSep: 18,
+      rankSep: 70,
+      padding: 24,
+      animate: false,
+    },
+    userZoomingEnabled: true,
+    userPanningEnabled: true,
+    boxSelectionEnabled: false,
+    selectionType: 'single',
+  });
+
+  cy.on('mouseover', 'node', evt => {
+    evt.target.connectedEdges().addClass('highlighted');
+  });
+  cy.on('mouseout', 'node', evt => {
+    evt.target.connectedEdges().removeClass('highlighted');
+  });
+
+  cyInstances['main'] = cy;
+}
+
+function renderTableView(filtered) {
+  const groups = groupByTrader(filtered);
+  const traders = TRADER_ORDER.filter(n => groups[n]);
+  const rest = Object.keys(groups).filter(n => !TRADER_ORDER.includes(n));
+  let html = '';
+
+  for (const trader of [...traders, ...rest]) {
+    const tasks = groups[trader];
+    if (!tasks || tasks.length === 0) continue;
+    const traderDone = tasks.filter(t => completedSet.has(t.id)).length;
+    const collapsed = sessionStorage.getItem('collapse_' + trader) === '1';
+
+    html += `<div class="trader-section" id="trader-${trader.replace(/\s/g,'_')}">
+      <div class="trader-header" onclick="toggleTrader('${trader}')">
+        <span class="trader-name">${trader}</span>
+        <span class="trader-count">${tasks.length} quests</span>
+        <span class="trader-progress">${traderDone}/${tasks.length}</span>
+        <span class="collapse-icon">${collapsed ? '▶' : '▼'}</span>
+      </div>
+      <div class="${collapsed ? 'collapsed-body' : ''}">
+        <table class="quest-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th></th>
+              <th>Quest</th>
+              <th>Map</th>
+              <th>Min Level</th>
+              <th class="col-prereqs">Prerequisites</th>
+              <th class="col-objectives">Objectives</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+    for (const task of tasks) {
+      const done = completedSet.has(task.id);
+      const prereqs = task.taskRequirements || [];
+      const objCount = task.objectives?.length || 0;
+
+      const hasPrereqs = task.taskRequirements && task.taskRequirements.length > 0;
+      html += `<tr class="quest-row${done ? ' completed' : ''}" id="row-${task.id}">
+        <td class="check-cell">
+          <input type="checkbox" class="quest-check" ${done ? 'checked' : ''}
+            onchange="handleCheck('${task.id}', this.checked)">
+        </td>
+        <td style="white-space:nowrap;padding:8px 4px 8px 0">${hasPrereqs ? `<button class="all-before-btn" onclick="markAllBefore('${task.id}')" title="Mark all prerequisite quests as complete">All before</button>` : ''}</td>
+        <td><div class="quest-name">${task.taskImageLink ? `<img class="quest-icon" src="${escHtml(task.taskImageLink)}" alt="" loading="lazy">` : ''}<span>${escHtml(task.name)}</span>${task.kappaRequired ? '<span class="kappa-badge">KAPPA</span>' : ''}</div></td>
+        <td>${task.map ? `<span class="map-badge">${escHtml(task.map.name)}</span>` : '<span style="color:var(--text-dim)">Any</span>'}</td>
+        <td><span class="level-badge">${task.minPlayerLevel || 1}</span></td>
+        <td class="col-prereqs">`;
+
+      if (prereqs.length > 0) {
+        html += `<div class="prereq-list">`;
+        for (const req of prereqs) {
+          const preqDone = completedSet.has(req.task.id);
+          html += `<span class="prereq-item${preqDone ? ' completed-prereq' : ''}"
+            onclick="scrollToTask('${req.task.id}')" title="Go to quest">${escHtml(req.task.name)}</span>`;
+        }
+        html += `</div>`;
+      } else {
+        html += `<span style="color:var(--text-dim);font-size:11px">—</span>`;
+      }
+
+      html += `</td><td class="col-objectives">`;
+
+      if (objCount > 0) {
+        html += `<button class="objectives-toggle" onclick="toggleObj('${task.id}')">
+          ${objCount} objective${objCount !== 1 ? 's' : ''}
+        </button>`;
+      }
+
+      html += `</td></tr>`;
+
+      if (objCount > 0) {
+        html += `<tr class="objectives-row" id="obj-${task.id}"><td colspan="7">`;
+        for (const obj of task.objectives) {
+          html += `<div class="objective-item">${escHtml(obj.description)}</div>`;
+        }
+        html += `</td></tr>`;
+      }
+    }
+
+    html += `</tbody></table></div></div>`;
+  }
+  return html;
+}
+
+function render() {
+  const filtered = getFilteredTasks();
+
+  let statsHtml;
+  if (currentFilter === 'kappa') {
+    const kappaTasks = allTasks.filter(t => t.kappaRequired);
+    const kappaDone = kappaTasks.filter(t => completedSet.has(t.id)).length;
+    statsHtml = `<span>${kappaDone}</span> / ${kappaTasks.length} kappa complete`;
+  } else {
+    const total = allTasks.length;
+    const done = completedSet.size;
+    statsHtml = `<span>${done}</span> / ${total} complete`;
+  }
+
+  document.getElementById('stats').innerHTML = statsHtml;
+
+  const total = allTasks.length;
+  const done = completedSet.size;
+  const main = document.getElementById('main');
+
+  destroyFlowcharts();
+
+  let html = currentView === 'flowchart'
+    ? ''
+    : `<div class="progress-bar-wrap"><div class="progress-bar" style="width:${total ? (done/total*100) : 0}%"></div></div>`;
+
+  if (currentView === 'flowchart') {
+    html += renderFlowchartView(filtered);
+  } else {
+    html += renderTableView(filtered);
+  }
+
+  if (filtered.length === 0) {
+    html += `<div class="loading" style="color:var(--text-dim)">No quests match filter.</div>`;
+  }
+
+  main.innerHTML = html;
+
+  if (currentView === 'flowchart') {
+    requestAnimationFrame(() => initFlowcharts(filtered));
+  }
+}
+
+function handleCheck(id, checked) {
+  if (checked) {
+    markComplete(id);
+  } else {
+    markIncomplete(id);
+  }
+}
+
+function toggleObj(id) {
+  const row = document.getElementById('obj-' + id);
+  if (row) row.classList.toggle('open');
+}
+
+function toggleTrader(name) {
+  const key = 'collapse_' + name;
+  const current = sessionStorage.getItem(key) === '1';
+  sessionStorage.setItem(key, current ? '0' : '1');
+  render();
+}
+
+function scrollToTask(id) {
+  const row = document.getElementById('row-' + id);
+  if (row) {
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.style.outline = '1px solid var(--accent)';
+    setTimeout(() => { row.style.outline = ''; }, 1500);
+  }
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// View toggle
+document.getElementById('viewTable').addEventListener('click', () => {
+  currentView = 'table';
+  document.getElementById('viewTable').classList.add('active');
+  document.getElementById('viewFlowchart').classList.remove('active');
+  render();
+});
+document.getElementById('viewFlowchart').addEventListener('click', () => {
+  currentView = 'flowchart';
+  document.getElementById('viewFlowchart').classList.add('active');
+  document.getElementById('viewTable').classList.remove('active');
+  render();
+});
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentFilter = btn.dataset.filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+
+// Search
+document.getElementById('search').addEventListener('input', e => {
+  searchQuery = e.target.value.trim();
+  render();
+});
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset all quest progress?')) {
+    completedSet.clear();
+    saveCompleted();
+    render();
+  }
+});
+
+// Init
+(async () => {
+  try {
+    allTasks = await fetchTasks();
+    taskMap = {};
+    traderInfo = {};
+    for (const t of allTasks) {
+      taskMap[t.id] = t;
+      if (t.trader?.name && !traderInfo[t.trader.name]) {
+        traderInfo[t.trader.name] = { imageLink: t.trader.imageLink };
+      }
+    }
+
+    // Sort each trader's quests: by min level, then by whether they have prereqs
+    allTasks.sort((a, b) => (a.minPlayerLevel || 1) - (b.minPlayerLevel || 1));
+
+    document.getElementById('loading').remove();
+    render();
+  } catch (e) {
+    document.getElementById('loading').innerHTML =
+      `<div class="error-msg">Failed to load quests: ${e.message}. Check network / tarkov.dev status.</div>`;
+  }
+})();
+</script>
+</body>
+</html>
