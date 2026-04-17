@@ -366,6 +366,146 @@
       color: var(--accent);
     }
 
+    /* Quick Setup */
+    .qs-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 200;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 80px;
+    }
+    .qs-overlay.open { display: flex; }
+
+    .qs-modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 560px;
+      max-width: calc(100vw - 32px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+
+    .qs-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg3);
+    }
+
+    .qs-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      flex: 1;
+    }
+
+    .qs-mode-wrap {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .qs-mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .qs-mode-btn:first-child { border-right: 1px solid var(--border); }
+    .qs-mode-btn.active { background: var(--bg); color: var(--accent); }
+    .qs-mode-btn:hover:not(.active) { color: var(--text); }
+
+    .qs-close {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 4px;
+      line-height: 1;
+      transition: color 0.1s;
+    }
+    .qs-close:hover { color: var(--text); }
+
+    .qs-search-wrap { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+
+    .qs-search {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      outline: none;
+    }
+    .qs-search:focus { border-color: var(--accent2); }
+    .qs-search::placeholder { color: var(--text-dim); }
+
+    .qs-results { max-height: 380px; overflow-y: auto; }
+
+    .qs-result {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(42,42,42,0.5);
+      transition: background 0.08s;
+    }
+    .qs-result:last-child { border-bottom: none; }
+    .qs-result:hover, .qs-result.hl { background: rgba(200,170,110,0.08); }
+    .qs-result.hl { outline: 1px solid rgba(200,170,110,0.2) inset; }
+
+    .qs-quest-name { flex: 1; font-size: 13px; color: var(--text); }
+    .qs-quest-name.done { color: var(--complete-text); text-decoration: line-through; opacity: 0.7; }
+
+    .qs-trader-tag {
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .qs-level {
+      font-size: 11px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .qs-empty {
+      padding: 24px 16px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .qs-hint {
+      padding: 6px 16px;
+      font-size: 11px;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+    .qs-hint kbd {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 10px;
+      color: var(--text);
+    }
+
     /* Flowchart view */
     .flowchart-fullscreen {
       position: fixed;
@@ -451,6 +591,7 @@
     <span class="stats" id="stats">Loading...</span>
     <button class="view-btn active" id="viewTable">Table</button>
     <button class="view-btn" id="viewFlowchart">Flowchart</button>
+    <button class="view-btn" id="quickSetupBtn">Quick Setup</button>
     <button class="reset-btn" id="resetBtn">Reset All</button>
   </div>
 </header>
@@ -458,6 +599,31 @@
 <main id="main">
   <div class="loading" id="loading">Loading quests from tarkov.dev...</div>
 </main>
+
+<div class="qs-overlay" id="qsOverlay">
+  <div class="qs-modal">
+    <div class="qs-header">
+      <span class="qs-title">Quick Setup</span>
+      <div class="qs-mode-wrap">
+        <button class="qs-mode-btn active" data-mode="before">Before</button>
+        <button class="qs-mode-btn" data-mode="current">Current</button>
+      </div>
+      <button class="qs-close" id="qsClose">✕</button>
+    </div>
+    <div class="qs-hint">
+      <strong>Before</strong> — mark all prerequisites complete, not the quest itself.
+      &nbsp;|&nbsp;
+      <strong>Current</strong> — mark quest + all prerequisites complete.
+      &nbsp;&nbsp;<kbd>↑</kbd><kbd>↓</kbd> navigate &nbsp;<kbd>Enter</kbd> apply &nbsp;<kbd>Esc</kbd> close
+    </div>
+    <div class="qs-search-wrap">
+      <input type="text" class="qs-search" id="qsSearch" placeholder="Search quests..." autocomplete="off" spellcheck="false">
+    </div>
+    <div class="qs-results" id="qsResults">
+      <div class="qs-empty">Type to search quests...</div>
+    </div>
+  </div>
+</div>
 
 <script>
 const GQL_URL = 'https://api.tarkov.dev/graphql';
@@ -470,7 +636,7 @@ const QUERY = `{
     taskImageLink
     trader { name imageLink }
     map { name }
-    taskRequirements { task { id name } }
+    taskRequirements { task { id name } status }
     objectives { id description type }
   }
 }`;
@@ -519,6 +685,8 @@ function getAllPrereqs(taskId, visited = new Set()) {
   const task = taskMap[taskId];
   if (!task) return visited;
   for (const req of task.taskRequirements) {
+    // Only follow requirements where the prereq must be *completed*, not just started
+    if (req.status && !req.status.includes('complete')) continue;
     getAllPrereqs(req.task.id, visited);
   }
   return visited;
@@ -663,9 +831,11 @@ function initFlowcharts(filtered) {
   for (const task of filtered) {
     for (const req of (task.taskRequirements || [])) {
       if (ids.has(req.task.id)) {
+        const isStartOnly = req.status && !req.status.includes('complete');
         elements.push({
           group: 'edges',
-          data: { id: `e-${req.task.id}-${task.id}`, source: req.task.id, target: task.id }
+          data: { id: `e-${req.task.id}-${task.id}`, source: req.task.id, target: task.id },
+          classes: isStartOnly ? 'start-req' : '',
         });
       }
     }
@@ -723,6 +893,15 @@ function initFlowcharts(filtered) {
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
           'arrow-scale': 0.7,
+        }
+      },
+      {
+        selector: 'edge.start-req',
+        style: {
+          'line-style': 'dashed',
+          'line-dash-pattern': [4, 3],
+          'line-color': '#2a2a4a',
+          'target-arrow-color': '#3a3a6a',
         }
       },
       {
@@ -925,6 +1104,109 @@ function escHtml(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+// Quick Setup
+let qsMode = 'before';
+let qsHl = 0;
+let qsMatches = [];
+
+function openQs() {
+  document.getElementById('qsOverlay').classList.add('open');
+  const inp = document.getElementById('qsSearch');
+  inp.value = '';
+  qsMatches = [];
+  qsHl = 0;
+  document.getElementById('qsResults').innerHTML = '<div class="qs-empty">Type to search quests...</div>';
+  inp.focus();
+}
+
+function closeQs() {
+  document.getElementById('qsOverlay').classList.remove('open');
+}
+
+function qsRender(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) {
+    qsMatches = [];
+    document.getElementById('qsResults').innerHTML = '<div class="qs-empty">Type to search quests...</div>';
+    return;
+  }
+  qsMatches = allTasks.filter(t =>
+    t.name.toLowerCase().includes(q) ||
+    (t.trader?.name || '').toLowerCase().includes(q)
+  ).slice(0, 14);
+  qsHl = 0;
+  qsDrawResults();
+}
+
+function qsDrawResults() {
+  const el = document.getElementById('qsResults');
+  if (qsMatches.length === 0) {
+    el.innerHTML = '<div class="qs-empty">No matches.</div>';
+    return;
+  }
+  el.innerHTML = qsMatches.map((t, i) => {
+    const color = TRADER_COLORS[t.trader?.name] || '#666';
+    const done = completedSet.has(t.id);
+    return `<div class="qs-result${i === qsHl ? ' hl' : ''}" onclick="qsApply(${i})">
+      <span class="qs-quest-name${done ? ' done' : ''}">${escHtml(t.name)}</span>
+      <span class="qs-trader-tag" style="color:${color}">${escHtml(t.trader?.name || '?')}</span>
+      <span class="qs-level">Lv${t.minPlayerLevel || 1}</span>
+    </div>`;
+  }).join('');
+}
+
+function qsApply(idx) {
+  const task = qsMatches[idx];
+  if (!task) return;
+  if (qsMode === 'before') {
+    markAllBefore(task.id);
+  } else {
+    markComplete(task.id);
+  }
+  qsDrawResults(); // refresh done states without closing
+}
+
+document.getElementById('quickSetupBtn').addEventListener('click', openQs);
+document.getElementById('qsClose').addEventListener('click', closeQs);
+
+document.getElementById('qsOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('qsOverlay')) closeQs();
+});
+
+document.getElementById('qsSearch').addEventListener('input', e => {
+  qsRender(e.target.value);
+});
+
+document.getElementById('qsSearch').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    qsHl = Math.min(qsHl + 1, qsMatches.length - 1);
+    qsDrawResults();
+    document.querySelectorAll('.qs-result')[qsHl]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    qsHl = Math.max(qsHl - 1, 0);
+    qsDrawResults();
+    document.querySelectorAll('.qs-result')[qsHl]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    if (qsMatches.length > 0) {
+      qsApply(qsHl);
+      e.target.value = '';
+      qsRender('');
+    }
+  } else if (e.key === 'Escape') {
+    closeQs();
+  }
+});
+
+document.querySelectorAll('.qs-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    qsMode = btn.dataset.mode;
+    document.querySelectorAll('.qs-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
 
 // View toggle
 document.getElementById('viewTable').addEventListener('click', () => {
