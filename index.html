@@ -912,6 +912,50 @@ function initFlowcharts(filtered) {
           'width': 2,
           'z-index': 10,
         }
+      },
+      {
+        selector: 'node.dim',
+        style: {
+          'opacity': 0.18,
+          'text-opacity': 0.25,
+        }
+      },
+      {
+        selector: 'edge.dim',
+        style: {
+          'opacity': 0.08,
+        }
+      },
+      {
+        selector: 'node.locked-focus',
+        style: {
+          'border-color': '#ffd070',
+          'border-width': 4,
+          'background-color': 'rgba(60, 45, 20, 0.95)',
+          'color': '#ffe8b0',
+          'z-index': 20,
+        }
+      },
+      {
+        selector: 'node.locked-upstream',
+        style: {
+          'border-color': '#c8aa6e',
+          'border-width': 3,
+          'opacity': 1,
+          'text-opacity': 1,
+          'z-index': 15,
+        }
+      },
+      {
+        selector: 'edge.locked-upstream',
+        style: {
+          'line-color': '#c8aa6e',
+          'target-arrow-color': '#c8aa6e',
+          'width': 3,
+          'opacity': 1,
+          'z-index': 18,
+          'line-style': 'solid',
+        }
       }
     ],
     layout: {
@@ -929,10 +973,58 @@ function initFlowcharts(filtered) {
   });
 
   cy.on('mouseover', 'node', evt => {
+    if (cy.scratch('_locked')) return;
     evt.target.connectedEdges().addClass('highlighted');
   });
   cy.on('mouseout', 'node', evt => {
+    if (cy.scratch('_locked')) return;
     evt.target.connectedEdges().removeClass('highlighted');
+  });
+
+  function clearLock() {
+    cy.scratch('_locked', null);
+    cy.elements().removeClass('dim locked-focus locked-upstream highlighted');
+  }
+
+  function lockUpstream(node) {
+    // BFS over incoming edges to collect all ancestors
+    const upstreamNodes = cy.collection();
+    const upstreamEdges = cy.collection();
+    const queue = [node];
+    const seen = new Set([node.id()]);
+    while (queue.length) {
+      const n = queue.shift();
+      const incoming = n.incomers('edge');
+      incoming.forEach(e => {
+        upstreamEdges.merge(e);
+        const src = e.source();
+        if (!seen.has(src.id())) {
+          seen.add(src.id());
+          upstreamNodes.merge(src);
+          queue.push(src);
+        }
+      });
+    }
+
+    cy.elements().removeClass('dim locked-focus locked-upstream highlighted');
+    cy.elements().addClass('dim');
+    node.removeClass('dim').addClass('locked-focus');
+    upstreamNodes.removeClass('dim').addClass('locked-upstream');
+    upstreamEdges.removeClass('dim').addClass('locked-upstream');
+    cy.scratch('_locked', node.id());
+  }
+
+  cy.on('tap', 'node', evt => {
+    const node = evt.target;
+    if (cy.scratch('_locked') === node.id()) {
+      clearLock();
+    } else {
+      lockUpstream(node);
+    }
+  });
+
+  cy.on('tap', evt => {
+    if (evt.target === cy) clearLock();
   });
 
   cyInstances['main'] = cy;
